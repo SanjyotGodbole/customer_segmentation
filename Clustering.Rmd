@@ -1,0 +1,337 @@
+---
+title: "Cluster Analysis of PHD data"
+author: "Sanjyot Godbole"
+date: "14 May 2019"
+output:
+  html_document:
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+---
+
+```{r}
+# clear your environment
+rm(list = ls(all=TRUE))
+```
+
+
+# Reading & Understanding the Data
+
+* Make sure the dataset is located in your current working directory
+
+```{r}
+input_data = read.csv('trainDF_for_Clustering_21-15-35.csv', header = T)
+```
+
+
+* Use the str(), summary() functions to get a feel for the dataset.
+
+```{r}
+str(input_data)
+```
+
+```{r}
+summary(input_data)
+```
+
+
+# Data Pre-processing
+
+
+* Attribute 'ProfessionalLicensure', 'eCommerceAccount' and 'NoOfProperties' are categorical variables. Lets convert appropriately.
+
+```{r}
+input_data$ProfessionalLicensure = as.factor(as.character(input_data$ProfessionalLicensure))
+
+input_data$eCommerceAccount = as.factor(as.character(input_data$eCommerceAccount))
+input_data$NoOfProperties = as.factor(as.character(input_data$NoOfProperties))
+
+#Now see the structure of the dataframe
+str(input_data)
+```
+
+* Identify the categorical and numerical attributes appropriately
+
+```{r}
+
+# extract the names of categorical columns
+categorical_cols = c()
+
+for (coln in names(input_data)){
+  if (is.factor(input_data[[coln]])){
+    categorical_cols = append(categorical_cols,coln)
+  }
+}
+
+categorical_cols = setdiff(categorical_cols,"CustomerID")
+print(categorical_cols)
+```
+
+```{r}
+#Now, how to find the numerical attributes?
+numerical_cols = setdiff(colnames(input_data), categorical_cols)
+
+numerical_cols = setdiff(numerical_cols,"CustomerID")
+numerical_cols
+```
+
+
+* Convert the Customer IDs to the row names, as this will later help us in visualising the clusters
+
+```{r}
+rownames(input_data) <- input_data$CustomerID
+customerID = input_data$CustomerID
+
+```
+
+* Drop the CustomerID column as it is now just redundant information
+
+```{r}
+input_data$CustomerID = NULL
+# OR
+# input_data <- input_data[, -c(colnames(input_data) %in% ("name"))]
+```
+
+
+* Find the number of missing values and either impute or omit them
+
+```{r}
+sum(is.na(input_data))
+```
+
+* There are no missing values in dataset
+
+```{r}
+# check no missing value in categorical column
+# sum(is.na(input_data$shelf))
+# had there been any missing value we would have imputed it seperately from numerical using modes.
+```
+
+```{r messages = FALSE}
+# library(DMwR)
+# input_data[,numerical_cols] <- knnImputation(input_data[,numerical_cols], k = 3, scale = T)
+# 
+# sum(is.na(input_data))
+```
+
+```{r messages = FALSE}
+# Make a copy of the dataframe for later use (mixed attributes)
+input_data_ori = input_data
+```
+
+* Convert the categorical to dummy variables (converting to numeric attributes by using dummy)
+
+```{r message = FALSE}
+# library("dummies")
+# shelfDummies = data.frame(dummy(input_data$shelf))
+# 
+# # name the new attributes appropriately
+# names(shelfDummies) = c("Shelf1","Shelf2","Shelf3")
+# head(shelfDummies)
+```
+
+```{r}
+# 
+# library("dummies")
+# 
+# dummifiedVarDF = list()
+# for (i in 1:length(categorical_cols)){
+#   dummifiedVarDF[[i]] = data.frame(dummy(input_data[[categorical_cols[i]]]))
+#   names(dummifiedVarDF[[i]]) = levels(input_data[[categorical_cols[i]]])
+#   input_data[[categorical_cols[i]]] = NULL
+#   input_data = data.frame(cbind(input_data,dummifiedVarDF[[i]]))
+# }
+# 
+# # print(dummifiedVarDF[1])
+# head(input_data)
+```
+
+
+* Converting categorical features to numeric features by using dummy
+_ ProfessionalLicensure _
+
+```{r}
+library("dummies")
+ProfessionalLicensure_Dummies = data.frame(dummy(input_data$ProfessionalLicensure))
+# name the new attributes appropriately
+names(ProfessionalLicensure_Dummies) = c("ProfessionalLicensure0","ProfessionalLicensure1")
+# head(ProfessionalLicensure_Dummies)
+```
+
+_ eCommerceAccount _
+
+```{r}
+eCommerceAccount_Dummies = data.frame(dummy(input_data$eCommerceAccount))
+# name the new attributes appropriately
+names(eCommerceAccount_Dummies) = c("eCommerceAccount0","eCommerceAccount1")
+# head(eCommerceAccount_Dummies)
+```
+
+_ SocialMediaAccount _
+
+```{r}
+SocialMediaAccount_Dummies = data.frame(dummy(input_data$SocialMediaAccount))
+# naming the new attributes appropriately
+names(SocialMediaAccount_Dummies) = c("SocialMediaAccount_No","SocialMediaAccount_Yes")
+# head(SocialMediaAccount_Dummies)
+```
+
+_ NoOfProperties _
+
+```{r}
+NoOfProperties_Dummies = data.frame(dummy(input_data$NoOfProperties))
+# naming the new attributes appropriately
+names(NoOfProperties_Dummies) = c("NoOfProperties_1","NoOfProperties_2", "NoOfProperties_3","NoOfProperties_4")
+# head(NoOfProperties_Dummies)
+```
+
+__ Asset_type __
+
+```{r}
+Asset_type_Dummies = data.frame(dummy(input_data$Asset_type))
+# naming the new attributes appropriately
+names(Asset_type_Dummies) = c("Asset_type_Complex_With_shared_services", "Asset_type_No_shred_services")
+# head(Asset_type_Dummies)
+```
+
+__ Villa_House  __
+
+```{r}
+Villa_House_Dummies = data.frame(dummy(input_data$Villa_House))
+# naming the new attributes appropriately
+names(Villa_House_Dummies) = c("Villa_House_No","Villa_House_Yes")
+# head(Villa_House_Dummies)
+```
+
+__ Investment_SelfOccupied  __ 
+
+```{r}
+Investment_SelfOccupied_Dummies = data.frame(dummy(input_data$Investment_SelfOccupied))
+# naming the new attributes appropriately
+names(Investment_SelfOccupied_Dummies) = c("Investment_SelfOccupied_Investment", "Investment_SelfOccupied_Self_Occupancy")
+# head(Investment_SelfOccupied_Dummies)
+```
+
+__ Payment_Status  __ 
+
+```{r}
+Payment_Status_Dummies = data.frame(dummy(input_data$Payment_Status))
+# naming the new attributes appropriately
+names(Payment_Status_Dummies) = c("Payment_Status_Default", "Payment_Status_Non-Payoff/Non-Default", "Payment_Status_Payoff")
+# head(Payment_Status_Dummies)
+```
+
+* Removing the original categorical features and adding the newly created dummy features
+
+```{r}
+input_data$ProfessionalLicensure = NULL
+input_data$eCommerceAccount = NULL
+input_data$SocialMediaAccount = NULL
+input_data$NoOfProperties = NULL
+input_data$Asset_type = NULL
+input_data$Villa_House = NULL
+input_data$Investment_SelfOccupied = NULL
+input_data$Payment_Status = NULL
+
+
+input_data = data.frame(cbind(input_data, ProfessionalLicensure_Dummies, eCommerceAccount_Dummies, SocialMediaAccount_Dummies, NoOfProperties_Dummies, Asset_type_Dummies, Villa_House_Dummies, Investment_SelfOccupied_Dummies, Payment_Status_Dummies))
+```
+
+* The data must be scaled, before measuring any type of distance metric as the variables with higher ranges will significantly influence the distance
+
+```{r}
+input_data[, numerical_cols] =  scale(input_data[,numerical_cols], center = T, scale = T)
+```
+
+
+# Partitioning clustering:
+
+In the partitioning approach, you specify K: the number of clusters sought. Observations are then randomly divided into K groups and reshufled to form cohesive clusters.    
+
+* Popular algorithms
+    - k-means
+    - Partioning around medoids (PAM)
+    
+
+## K-Means Clustering
+
+#### K-Means Clustering procedure
+
+* Let us first try to animate the kmeans process. Build a basic kmeans model with k = 3, using the kmeans.ani() function. This takes an input of size features. Hence considering "diff_Salary_Utility" and "CreditRiskScore"
+
+```{r message = FALSE}
+library(animation)
+set.seed(123)
+km_ani <- kmeans.ani(subset(input_data, select=c("diff_Salary_Utility", "CreditRiskScore")), centers = 3)
+```
+
+As we can see, it needed few iterations to find final clusters
+
+* Build a basic kmeans model with k = 3, using the kmeans() function
+
+```{r}
+set.seed(123)
+km_basic <- kmeans(input_data, centers = 3, nstart = 4)
+```
+
+* The kmeans() function returns a list of 9 objects which include the cluster assignments ("cluster"), cluster centers ("centers"), etc. You can further explore the returned object by calling the str() function on the returned object and going through the documentation
+
+```{r}
+# plot in 2-d
+str(km_basic)
+```
+
+* We can use fviz_cluster() to see the segmentation in 2-d. This function implicitly does PCA and uses the 2 Principal components for plotting. 
+
+```{r}
+library(factoextra)
+# plot in 2-d
+fviz_cluster(km_basic, input_data, labelsize = 7)
+```
+
+* Let's now build a sceen plot to choose a "k"
+
+```{r}
+set.seed(123)
+fviz_nbclust(input_data, kmeans, method = "wss")
+```
+
+ 
+
+* Let's choose k as 3 and cluster the data
+
+```{r}
+set.seed(123)
+km_clust <- kmeans(input_data, centers = 3, nstart = 4)
+
+# Store the cluster assignments in a new data frame
+input_clusts_km <- as.data.frame(cbind(clust = km_clust$cluster, input_data))
+
+# Look at the head of the data
+head(input_clusts_km)
+```
+
+* We can visualise the clusters by plotting the data using the fviz_cluster() function which plots the points on the first two principal components
+
+```{r, fig.height=8, fig.width=14}
+fviz_cluster(km_clust, input_data, labelsize = 7)
+```
+
+
+## K-Mediods Clustering
+
+```{r}
+library(cluster)
+pamx <- pam(input_data, 3, )
+
+# pamx
+```
+
+* We can visualise the clusters by plotting the data using the fviz_cluster() function which plots the points on the first two principal components
+
+```{r}
+fviz_cluster(pamx, labelsize = 7)
+```
+
+
+* Conclusion: In this case, K-Mediods did not give as good cluster segmentation as kmeans
